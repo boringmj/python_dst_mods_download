@@ -15,17 +15,6 @@ mods=[
     '3032865114'
 ]
 
-# 通过mod_id获取数据库中的版本号
-def get_version(mod_id):
-    pass
-
-# 通过mod_id和下载文件的路径更新数据库数据
-def update(mod_id,path):
-    # 通过lua解析mod的配置文件
-    # 将解析出来的数据更新到数据库
-    # 通过某种方法获取mod的版本号
-    pass
-
 class MyTerminal(Terminal):
 
     def _handle(self,data:str)->None:
