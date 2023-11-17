@@ -70,7 +70,7 @@ class MyTerminal(Terminal):
             try:
                 output_buffer=ctypes.create_string_buffer(buffer_size)
                 dll.GetModInfo(bytes(mod_path+"/modinfo.lua",encoding="utf-8"),output_buffer,len(output_buffer))
-                print(output_buffer.value.decode("utf-8"))
+                # print(output_buffer.value.decode("utf-8"))
                 # 获取mod的信息
                 mod_info=json.loads(output_buffer.value.decode("utf-8"))
                 # 写入数据库
