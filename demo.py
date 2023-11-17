@@ -1,24 +1,19 @@
-import threading,time,re,json
+import threading,time,re,json,ctypes
 from terminal_quick.terminal import Terminal
-import ctypes
-# 引入处理mysql的库
+# 请自行使用pip安装pymysql
 import pymysql
 
-# 线程标志位(标志位并不能及时停止线程，只是用于通知线程停止)
-start=True
+"""
+steamcmd下载的mod默认在启动用户的家目录下的Steam/steamapps/workshop/content/322330中
+请注意完成下面的配置
 
-# 应用id可以在steam商店页面找到
-app_id=322330
+@ahthor: boringmj(wuliaodemoji@wuliaomj.com)
+"""
 
-# Workshop官网
-# url="https://steamcommunity.com/sharedfiles/filedetails/?id="
+# steamcmd路径(必须保证steamcmd已经安装且依赖已经安装)
+steamcmd_path='~/steamcmd/steamcmd.sh'
 
-# 需要定期更新的mod列表
-# mods=[
-#     '3032865114'
-# ]
-
-# 数据库信息
+# 数据库信息(默认使用uft8mb4编码，因为modinfo.lua中可能包含emoji表情)
 db_config={
     'host':'localhost',
     'port':3306,
@@ -27,11 +22,14 @@ db_config={
     'database':'database'
 }
 
-# 休眠时间
+# 休眠时间(单位：秒,如果时间过短可能会导致上一个队列还未处理完就加入了新的队列,导致队列长度逐渐增加)
 sleep_time=60*60
 
-# steamcmd路径
-steamcmd_path='/home/qian/steamcmd/steamcmd.sh'
+# 线程标志位(标志位并不能及时停止线程，只是用于通知线程停止)
+start=True
+
+# 应用id可以在steam商店页面找到
+app_id=322330
 
 # 预先处理
 ll=ctypes.cdll.LoadLibrary
