@@ -6,6 +6,7 @@ import pymysql
 """
 steamcmd下载的mod默认在启动用户的家目录下的Steam/steamapps/workshop/content/322330中
 请注意完成下面的配置
+本程序只会从数据库中读取status为0或1的mod
 
 @ahthor: boringmj(wuliaodemoji@wuliaomj.com)
 """
@@ -96,7 +97,7 @@ def check_mods():
             print('正在尝试加载mod列表')
             # 获取mod列表
             cursor=db.cursor()
-            cursor.execute('select `mod_id`,`version` from `ssd_mod_info`')
+            cursor.execute('select `mod_id`,`version` from `ssd_mod_info` where `status` in (0,1)')
             mods=cursor.fetchall()
             cursor.close()
             print('mod列表加载完成')
