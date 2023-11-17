@@ -18,6 +18,21 @@ app_id=322330
 #     '3032865114'
 # ]
 
+# 数据库信息
+db_config={
+    'host':'localhost',
+    'port':3306,
+    'user':'user',
+    'password':'pass',
+    'database':'database'
+}
+
+# 休眠时间
+sleep_time=60*60
+
+# steamcmd路径
+steamcmd_path='/home/qian/steamcmd/steamcmd.sh'
+
 # 预先处理
 ll=ctypes.cdll.LoadLibrary
 dll=ll("./luatool.so")
@@ -28,7 +43,14 @@ buffer_size=1024*10
 
 
 # 连接数据库
-db=pymysql.connect(host='localhost',port=3306,user='user',password='pass',database='database')
+db=pymysql.connect(
+    host=db_config['host'],
+    port=db_config['port'],
+    user=db_config['user'],
+    password=db_config['password'],
+    database=db_config['database'],
+    charset='utf8mb4'
+)
 
 class MyTerminal(Terminal):
 
@@ -62,16 +84,16 @@ class MyTerminal(Terminal):
                 print(f'更新mod {mod_id} 时发生错误：{e}')
 
 # 启动steamcmd
-terminal=MyTerminal('/home/qian/steamcmd/steamcmd.sh')
+terminal=MyTerminal(steamcmd_path)
 # # 匿名登录steam
 terminal.write(f'login anonymous\r')
 # 开启一个定时任务，每隔一段时间检查一次mod是否需要更新
 def check_mods():
-    global terminal,start,db
+    global terminal,start,db,sleep_time
     print('检查mod是否需要更新的线程已启动')
-    count=3600
+    count=sleep_time
     while start:
-        if count>=3600:
+        if count>=sleep_time:
             count=0
             print('正在尝试加载mod列表')
             # 获取mod列表
