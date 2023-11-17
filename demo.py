@@ -1,5 +1,8 @@
-import threading,time,re,requests
+import threading,time,re,json
 from terminal_quick.terminal import Terminal
+import ctypes
+# 引入处理mysql的库
+import pymysql
 
 # 线程标志位(标志位并不能及时停止线程，只是用于通知线程停止)
 start=True
@@ -8,16 +11,29 @@ start=True
 app_id=322330
 
 # Workshop官网
-url="https://steamcommunity.com/sharedfiles/filedetails/?id="
+# url="https://steamcommunity.com/sharedfiles/filedetails/?id="
 
 # 需要定期更新的mod列表
-mods=[
-    '3032865114'
-]
+# mods=[
+#     '3032865114'
+# ]
+
+# 预先处理
+ll=ctypes.cdll.LoadLibrary
+dll=ll("./luatool.so")
+get_modinfo=dll.GetModInfo
+get_modinfo.argtypes=[ctypes.c_char_p,ctypes.c_char_p,ctypes.c_int]
+get_modinfo.restype=None
+buffer_size=1024*10
+
+
+# 连接数据库
+db=pymysql.connect(host='localhost',port=3306,user='user',password='pass',database='database')
 
 class MyTerminal(Terminal):
 
     def _handle(self,data:str)->None:
+        global dll,buffer_size
         # 不换行输出
         print(data,end='')
         # 通过正则表达式获取正在下载的mod的id
@@ -30,47 +46,48 @@ class MyTerminal(Terminal):
         if mod_info:
             mod_id,mod_path=mod_info.group(1),mod_info.group(2)
             print(f'检测到mod {mod_id} 下载完成，路径为 {mod_path}')
-        """
-        请在这里添加你的代码
-        """
+            try:
+                output_buffer=ctypes.create_string_buffer(buffer_size)
+                dll.GetModInfo(bytes(mod_path+"/modinfo.lua",encoding="utf-8"),output_buffer,len(output_buffer))
+                print(output_buffer.value.decode("utf-8"))
+                # 获取mod的信息
+                mod_info=json.loads(output_buffer.value.decode("utf-8"))
+                # 写入数据库
+                cursor=db.cursor()
+                cursor.execute('update `ssd_mod_info` set `mod_path`=%s,`status`=1,`name`=%s,`version`=%s,`author`=%s,`description`=%s,`configuration_options`=%s where `mod_id`=%s',(mod_path,mod_info['name'],mod_info['version'],mod_info['author'],mod_info['description'],json.dumps(mod_info['configuration_options']),mod_id))
+                db.commit()
+                cursor.close()
+                print(f'mod {mod_id} 已更新到数据库')
+            except Exception as e:
+                print(f'更新mod {mod_id} 时发生错误：{e}')
 
 # 启动steamcmd
-terminal=MyTerminal('/root/steamcmd/steamcmd.sh')
+terminal=MyTerminal('/home/qian/steamcmd/steamcmd.sh')
 # # 匿名登录steam
 terminal.write(f'login anonymous\r')
 # 开启一个定时任务，每隔一段时间检查一次mod是否需要更新
 def check_mods():
-    global mods,terminal,url,start
+    global terminal,start,db
     print('检查mod是否需要更新的线程已启动')
     count=3600
     while start:
         if count>=3600:
             count=0
-            print('正在检查mod是否需要更新')
+            print('正在尝试加载mod列表')
+            # 获取mod列表
+            cursor=db.cursor()
+            cursor.execute('select `mod_id`,`version` from `ssd_mod_info`')
+            mods=cursor.fetchall()
+            cursor.close()
+            print('mod列表加载完成')
+            # 通过steamcmd更新mod
             for mod in mods:
-                print(f'正在检查mod {mod} 是否需要更新')
-                try:
-                    workshop_url=url+str(mod)
-                    # 获取mod的html页面
-                    html=requests.get(workshop_url,timeout=15).text
-                    # 通过正则表达式获取mod的版本号
-                    version=re.search(r'<span class="workshopTagsTitle">.*?version:([\d\.]+)</a></div>',html)
-                    if version:
-                        version=version.group(1)
-                        print(f'检测到mod {mod} 的版本号为 {version}')
-                        # 请在这里判断mod的版本号是否需要更新，如果需要更新则执行下面的代码
-                        """
-                        请在这里添加你的代码
-                        """
-                        terminal.write(f'workshop_download_item {app_id} {mod}\r')
-                        print(f'正在尝试更新mod {mod}')
-                    else:
-                        print(f'检测到mod {mod} 的版本号获取失败')
-                except requests.RequestException as e:
-                    print(f'检测mod {mod} 是否需要更新时出现异常 {e}')
+                mod_id,version=mod
+                # 检查mod是否需要更新
+                print(f'正在检查mod {mod_id}: {version} 是否需要更新')
+                terminal.write(f'workshop_download_item {app_id} {mod_id}\r')
                 if not start:
                     break
-                time.sleep(10)
         if not start:
             break
         count+=1
